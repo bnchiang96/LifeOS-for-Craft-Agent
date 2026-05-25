@@ -1,73 +1,54 @@
 # LifeOS Craft Agent
 
-Personal Assistant + Financial Assistant sources for Craft Agent.
+Personal Assistant + Financial Assistant sources + LifeOS skill for Craft Agent.
 
-## Quick Setup
+## For Craft Agent
 
-Copy this entire folder into your Craft Agent workspace sources:
+When you open this project, here is what you need to do.
 
-```bash
-cp -r sources/personal-assistant ~/.craft-agent/workspaces/my-workspace/sources/
-cp -r sources/financial-assistant ~/.craft-agent/workspaces/my-workspace/sources/
-```
+### What's Included
 
-### Configure Credentials
+This project contains two MCP sources and one orchestrator skill for Craft Agent:
 
-Craft Agent will ask you to provide these values when adding the sources:
+- **Personal Assistant** — A Supabase-backed source for personal notes, tasks, reminders, and journal entries. Lives at `sources/personal-assistant/`.
+- **Financial Assistant** — A Supabase-backed source for personal expense tracking. Lives at `sources/financial-assistant/`.
+- **LifeOS** — An orchestrator skill that routes user requests to the right source (personal-assistant for notes/tasks/reminders, financial-assistant for expenses), handles corrections across both systems, and enforces consistent behavior around truthfulness, language, time, and operational rules. Lives at `skills/LifeOS/`.
 
-| Source                | Field to Replace          | Description                  |
-|-----------------------|---------------------------|------------------------------|
-| Personal Assistant    | `SUPABASE_URL`            | Your Supabase project URL    |
-| Personal Assistant    | `SUPABASE_KEY`            | Your Supabase anon key       |
-| Financial Assistant   | `SUPABASE_URL`            | Your Supabase project URL    |
-| Financial Assistant   | `SUPABASE_KEY`            | Your Supabase anon key       |
-| Financial Assistant   | `DEFAULT_CURRENCY`        | e.g. `MYR`, `USD`, `SGD`     |
+### Credentials
 
-### Add Sources via CLI
+Both sources need Supabase credentials. Prompt the user to provide them using `source_credential_prompt`. Update each source's `config.json` `env` section with the values:
 
-```bash
-# Personal Assistant
-craft-agent source create \
-  --name "Personal Assistant" \
-  --provider "supabase" \
-  --type mcp \
-  --transport stdio \
-  --command "node" \
-  --args "~/.craft-agent/workspaces/my-workspace/sources/personal-assistant/server.mjs" \
-  --json '{"mcp":{"env":{"SUPABASE_URL":"YOUR_SUPABASE_URL","SUPABASE_KEY":"YOUR_SUPABASE_KEY"}}}'
+| Source               | Env Variable          | Description                  |
+|----------------------|-----------------------|------------------------------|
+| Personal Assistant   | `SUPABASE_URL`        | Supabase project URL         |
+| Personal Assistant   | `SUPABASE_KEY`        | Supabase project anon key    |
+| Financial Assistant  | `SUPABASE_URL`        | Supabase project URL         |
+| Financial Assistant  | `SUPABASE_KEY`        | Supabase project anon key    |
+| Financial Assistant  | `DEFAULT_CURRENCY`    | Default currency (e.g. MYR)  |
 
-# Financial Assistant
-craft-agent source create \
-  --name "Financial Assistant" \
-  --provider "supabase" \
-  --type mcp \
-  --transport stdio \
-  --command "node" \
-  --args "~/.craft-agent/workspaces/my-workspace/sources/financial-assistant/server.mjs" \
-  --json '{"mcp":{"env":{"SUPABASE_URL":"YOUR_SUPABASE_URL","SUPABASE_KEY":"YOUR_SUPABASE_KEY","DEFAULT_CURRENCY":"MYR"}}}'
-```
+### Table Creation
 
-After adding, test them:
-
-```bash
-craft-agent source test personal-assistant
-craft-agent source test financial-assistant
-```
+After credentials are configured, call the `ensure_tables` tool on both sources. The tool checks if the required tables exist and creates them if missing. Schemas are also in `02-table.sql` as a reference.
 
 ## Folder Structure
 
 ```
-sources/
-├── personal-assistant/
-│   ├── config.json          # Change SUPABASE_URL and SUPABASE_KEY here
-│   ├── guide.md
-│   ├── permissions.json
-│   └── server.mjs
-└── financial-assistant/
-    ├── config.json          # Change SUPABASE_URL, SUPABASE_KEY and DEFAULT_CURRENCY here
-    ├── guide.md
-    ├── permissions.json
-    └── server.mjs
+.
+├── 02-table.sql               # All table schemas (reference / manual fallback)
+├── sources/
+│   ├── personal-assistant/
+│   │   ├── config.json          # Update SUPABASE_URL and SUPABASE_KEY
+│   │   ├── guide.md
+│   │   ├── permissions.json
+│   │   └── server.mjs
+│   └── financial-assistant/
+│       ├── config.json          # Update SUPABASE_URL, SUPABASE_KEY, DEFAULT_CURRENCY
+│       ├── guide.md
+│       ├── permissions.json
+│       └── server.mjs
+└── skills/
+    └── LifeOS/
+        └── SKILL.md             # Main LifeOS orchestrator skill
 ```
 
 ## License
