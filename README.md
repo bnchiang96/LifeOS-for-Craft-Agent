@@ -14,9 +14,9 @@ This project contains two MCP sources and one orchestrator skill for Craft Agent
 - **Financial Assistant** — A Supabase-backed source for personal expense tracking. Lives at `sources/financial-assistant/`.
 - **LifeOS** — An orchestrator skill that routes user requests to the right source (personal-assistant for notes/tasks/reminders, financial-assistant for expenses), handles corrections across both systems, and enforces consistent behavior around truthfulness, language, time, and operational rules. Lives at `skills/LifeOS/`.
 
-### Credentials
+### Setup
 
-Both sources need Supabase credentials. Prompt the user to provide them using `source_credential_prompt`. Update each source's `config.json` `env` section with the values:
+1. Prompt the user for credentials using `source_credential_prompt`. Update each source's `config.json` `env` section:
 
 | Source               | Env Variable          | Description                  |
 |----------------------|-----------------------|------------------------------|
@@ -26,9 +26,9 @@ Both sources need Supabase credentials. Prompt the user to provide them using `s
 | Financial Assistant  | `SUPABASE_KEY`        | Supabase project anon key    |
 | Financial Assistant  | `DEFAULT_CURRENCY`    | Default currency (e.g. MYR)  |
 
-### Table Creation
+2. Run `source_test` on both sources to initialize the MCP servers.
 
-After credentials are configured, call the `ensure_tables` tool on both sources. The tool checks if the required tables exist and creates them if missing. Schemas are also in `02-table.sql` as a reference.
+3. Call `ensure_tables` on both sources. Done.
 
 ## Folder Structure
 
