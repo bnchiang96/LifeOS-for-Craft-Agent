@@ -1,27 +1,29 @@
 # LifeOS Craft Agent
 
-A complete **Life Operating System** built on Craft Agent. This repository contains skills, source configurations, and setup instructions to turn Craft Agent into a powerful personal OS for productivity, knowledge management, and life tracking.
-
-## What is LifeOS?
-
-LifeOS combines:
-- **Skills** — Specialized agents for daily reviews, task triage, journaling, project management, etc.
-- **Sources (MCP)** — Connected data sources (Linear, GitHub, Calendar, Notes, Health, Finance, etc.)
-- **Automations** — Scheduled briefings, weekly reviews, and proactive life management.
+Personal Assistant + Financial Assistant sources for Craft Agent.
 
 ## Quick Setup
 
-### 1. Install Personal Assistant & Financial Assistant (Core LifeOS Sources)
+Copy this entire folder into your Craft Agent workspace sources:
 
-These two sources power the LifeOS system:
+```bash
+cp -r sources/personal-assistant ~/.craft-agent/workspaces/my-workspace/sources/
+cp -r sources/financial-assistant ~/.craft-agent/workspaces/my-workspace/sources/
+```
 
-- **Personal Assistant** — Private notebook (tasks, notes, journaling)
-- **Financial Assistant** — Expense tracking
+### Configure Credentials
 
-**During setup, Craft Agent will ask you to provide:**
+Craft Agent will ask you to provide these values when adding the sources:
 
-- `SUPABASE_URL` — Your Supabase project URL
-- `SUPABASE_KEY` — Your Supabase anon key
+| Source                | Field to Replace          | Description                  |
+|-----------------------|---------------------------|------------------------------|
+| Personal Assistant    | `SUPABASE_URL`            | Your Supabase project URL    |
+| Personal Assistant    | `SUPABASE_KEY`            | Your Supabase anon key       |
+| Financial Assistant   | `SUPABASE_URL`            | Your Supabase project URL    |
+| Financial Assistant   | `SUPABASE_KEY`            | Your Supabase anon key       |
+| Financial Assistant   | `DEFAULT_CURRENCY`        | e.g. `MYR`, `USD`, `SGD`     |
+
+### Add Sources via CLI
 
 ```bash
 # Personal Assistant
@@ -31,15 +33,8 @@ craft-agent source create \
   --type mcp \
   --transport stdio \
   --command "node" \
-  --args "sources/personal-assistant/server.mjs" \
-  --json '{
-    "mcp": {
-      "env": {
-        "SUPABASE_URL": "YOUR_SUPABASE_URL",
-        "SUPABASE_KEY": "YOUR_SUPABASE_KEY"
-      }
-    }
-  }'
+  --args "~/.craft-agent/workspaces/my-workspace/sources/personal-assistant/server.mjs" \
+  --json '{"mcp":{"env":{"SUPABASE_URL":"YOUR_SUPABASE_URL","SUPABASE_KEY":"YOUR_SUPABASE_KEY"}}}'
 
 # Financial Assistant
 craft-agent source create \
@@ -48,68 +43,33 @@ craft-agent source create \
   --type mcp \
   --transport stdio \
   --command "node" \
-  --args "sources/financial-assistant/server.mjs" \
-  --json '{
-    "mcp": {
-      "env": {
-        "SUPABASE_URL": "YOUR_SUPABASE_URL",
-        "SUPABASE_KEY": "YOUR_SUPABASE_KEY",
-        "DEFAULT_CURRENCY": "MYR"
-      }
-    }
-  }'
+  --args "~/.craft-agent/workspaces/my-workspace/sources/financial-assistant/server.mjs" \
+  --json '{"mcp":{"env":{"SUPABASE_URL":"YOUR_SUPABASE_URL","SUPABASE_KEY":"YOUR_SUPABASE_KEY","DEFAULT_CURRENCY":"MYR"}}}'
 ```
 
-After adding each source, run:
+After adding, test them:
 
 ```bash
 craft-agent source test personal-assistant
 craft-agent source test financial-assistant
 ```
 
-### 2. Install Additional Recommended Sources
-
-```bash
-# Linear (Tasks)
-craft-agent source create --name "Linear" --provider "linear" --type mcp --url "https://mcp.linear.app" --auth-type oauth
-
-# GitHub
-craft-agent source create --name "GitHub" --provider "github" --type mcp --url "https://api.githubcopilot.com/mcp/" --auth-type bearer
-
-# Google Calendar
-craft-agent source create --name "Google Calendar" --provider "google" --type api --base-url "https://www.googleapis.com/calendar/v3/" --auth-type oauth
-```
-
-### 3. Install LifeOS Skills
-
-Skills will be added to this repository soon. You can create your own or copy from the community.
-
-## Repository Structure
+## Folder Structure
 
 ```
-.
-├── README.md
-├── skills/                     # LifeOS skills (coming soon)
-├── sources/
-│   ├── personal-assistant/     # Personal notebook (masked Supabase credentials)
-│   └── financial-assistant/    # Expense tracking (masked Supabase credentials)
-├── docs/
-└── setup.sh                    # One-command setup (coming soon)
+sources/
+├── personal-assistant/
+│   ├── config.json          # Change SUPABASE_URL and SUPABASE_KEY here
+│   ├── guide.md
+│   ├── permissions.json
+│   └── server.mjs
+└── financial-assistant/
+    ├── config.json          # Change SUPABASE_URL, SUPABASE_KEY and DEFAULT_CURRENCY here
+    ├── guide.md
+    ├── permissions.json
+    └── server.mjs
 ```
-
-## Publishing Your Own Skills & MCPs
-
-This repo is designed to be forked and extended.
-
-- **Skills** follow the official Claude Code SDK format → fully compatible.
-- **MCP servers** are standard MCP — publish as npm packages or hosted endpoints.
-
-See individual skill folders for examples.
-
-## Contributing
-
-Pull requests for new LifeOS skills (especially around health, finance, relationships, and long-term goals) are very welcome.
 
 ## License
 
-MIT — Use freely to build your own LifeOS.
+MIT
