@@ -11,7 +11,7 @@
     "transport": "stdio",
     "command": "node",
     "args": [
-      "/Users/leebonchiang/.craft-agent/workspaces/my-workspace/sources/personal-assistant/server.mjs"
+      "server.mjs"
     ],
     "env": {
       "SUPABASE_URL": "YOUR_SUPABASE_URL",
