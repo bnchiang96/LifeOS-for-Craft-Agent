@@ -1,0 +1,19 @@
+# Craft Agent
+**/.craft-agent/
+**/.env
+**/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node / Python
+node_modules/
+__pycache__/
+*.pyc
