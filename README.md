@@ -16,7 +16,9 @@ This project contains two MCP sources and one orchestrator skill for Craft Agent
 
 ### Setup
 
-1. Prompt the user for credentials using `source_credential_prompt`. Update each source's `config.json` `env` section:
+1. Update `args` in each `config.json` to use the absolute path of `server.mjs` (e.g. `~/.craft-agent/workspaces/my-workspace/sources/personal-assistant/server.mjs`).
+
+2. Prompt the user for credentials using `source_credential_prompt`. Update each source's `config.json` `env` section:
 
 | Source               | Env Variable          | Description                  |
 |----------------------|-----------------------|------------------------------|
@@ -26,9 +28,9 @@ This project contains two MCP sources and one orchestrator skill for Craft Agent
 | Financial Assistant  | `SUPABASE_KEY`        | Supabase project anon key    |
 | Financial Assistant  | `DEFAULT_CURRENCY`    | Default currency (e.g. MYR)  |
 
-2. Run `source_test` on both sources to initialize the MCP servers.
+3. Run `source_test` on both sources to initialize the MCP servers.
 
-3. Call `ensure_tables` on both sources. Done.
+4. Call `ensure_tables` on both sources. Done.
 
 ## Folder Structure
 
