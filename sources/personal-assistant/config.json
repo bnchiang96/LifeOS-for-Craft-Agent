@@ -1,0 +1,26 @@
+{
+  "id": "personal-assistant_a1b2c3d4",
+  "name": "Personal Assistant",
+  "slug": "personal-assistant",
+  "enabled": true,
+  "provider": "supabase",
+  "type": "mcp",
+  "icon": "📝",
+  "tagline": "Private personal entry notebook backed by Supabase",
+  "mcp": {
+    "transport": "stdio",
+    "command": "node",
+    "args": [
+      "/Users/leebonchiang/.craft-agent/workspaces/my-workspace/sources/personal-assistant/server.mjs"
+    ],
+    "env": {
+      "SUPABASE_URL": "YOUR_SUPABASE_URL",
+      "SUPABASE_KEY": "YOUR_SUPABASE_KEY"
+    },
+    "authType": "none"
+  },
+  "createdAt": 1747300800000,
+  "updatedAt": 1779685911320,
+  "lastTestedAt": 1779685911320,
+  "connectionStatus": "connected"
+}

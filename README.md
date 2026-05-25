@@ -11,42 +11,61 @@ LifeOS combines:
 
 ## Quick Setup
 
-### 1. Install the LifeOS MCP Server (Core Data Layer)
+### 1. Install Personal Assistant & Financial Assistant (Core LifeOS Sources)
 
-This is the most important step. The LifeOS MCP server connects all your personal data.
+These two sources power the LifeOS system:
+
+- **Personal Assistant** — Private notebook (tasks, notes, journaling)
+- **Financial Assistant** — Expense tracking
 
 **During setup, Craft Agent will ask you to provide:**
 
-- `LIFEOS_PROJECT_URL` — Your project URL
-- `LIFEOS_ANON_KEY` — Your anonymous API key
-
-Run this command:
+- `SUPABASE_URL` — Your Supabase project URL
+- `SUPABASE_KEY` — Your Supabase anon key
 
 ```bash
+# Personal Assistant
 craft-agent source create \
-  --name "LifeOS MCP" \
-  --provider "lifeos" \
+  --name "Personal Assistant" \
+  --provider "supabase" \
   --type mcp \
   --transport stdio \
-  --command "npx" \
-  --args "-y,@lifeos/mcp-server" \
+  --command "node" \
+  --args "sources/personal-assistant/server.mjs" \
   --json '{
     "mcp": {
       "env": {
-        "LIFEOS_PROJECT_URL": "YOUR_PROJECT_URL",
-        "LIFEOS_ANON_KEY": "YOUR_ANON_KEY"
+        "SUPABASE_URL": "YOUR_SUPABASE_URL",
+        "SUPABASE_KEY": "YOUR_SUPABASE_KEY"
+      }
+    }
+  }'
+
+# Financial Assistant
+craft-agent source create \
+  --name "Financial Assistant" \
+  --provider "supabase" \
+  --type mcp \
+  --transport stdio \
+  --command "node" \
+  --args "sources/financial-assistant/server.mjs" \
+  --json '{
+    "mcp": {
+      "env": {
+        "SUPABASE_URL": "YOUR_SUPABASE_URL",
+        "SUPABASE_KEY": "YOUR_SUPABASE_KEY",
+        "DEFAULT_CURRENCY": "MYR"
       }
     }
   }'
 ```
 
-Then validate:
+After adding each source, run:
 
 ```bash
-craft-agent source test lifeos-mcp
+craft-agent source test personal-assistant
+craft-agent source test financial-assistant
 ```
-
-> See `sources/lifeos-mcp/guide.md` for detailed instructions.
 
 ### 2. Install Additional Recommended Sources
 
@@ -70,11 +89,12 @@ Skills will be added to this repository soon. You can create your own or copy fr
 ```
 .
 ├── README.md
-├── skills/                 # Reusable LifeOS skills (coming soon)
+├── skills/                     # LifeOS skills (coming soon)
 ├── sources/
-│   └── lifeos-mcp/         # LifeOS MCP server template (masked credentials)
-├── docs/                   # Additional guides
-└── setup.sh                # One-command setup (coming soon)
+│   ├── personal-assistant/     # Personal notebook (masked Supabase credentials)
+│   └── financial-assistant/    # Expense tracking (masked Supabase credentials)
+├── docs/
+└── setup.sh                    # One-command setup (coming soon)
 ```
 
 ## Publishing Your Own Skills & MCPs

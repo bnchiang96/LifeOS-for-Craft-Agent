@@ -1,0 +1,12 @@
+{
+  "allowedMcpPatterns": [
+    {
+      "pattern": "search_expenses",
+      "comment": "Allow read-only expense searches in Explore mode"
+    },
+    {
+      "pattern": "get_expense_history",
+      "comment": "Allow read-only expense history lookups in Explore mode"
+    }
+  ]
+}

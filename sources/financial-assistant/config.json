@@ -1,0 +1,27 @@
+{
+  "id": "financial-assistant_b4c5d6e7",
+  "name": "Financial Assistant",
+  "slug": "financial-assistant",
+  "enabled": true,
+  "provider": "supabase",
+  "type": "mcp",
+  "icon": "💸",
+  "tagline": "Private expense notebook backed by Supabase",
+  "mcp": {
+    "transport": "stdio",
+    "command": "node",
+    "args": [
+      "/Users/leebonchiang/.craft-agent/workspaces/my-workspace/sources/financial-assistant/server.mjs"
+    ],
+    "env": {
+      "SUPABASE_URL": "YOUR_SUPABASE_URL",
+      "SUPABASE_KEY": "YOUR_SUPABASE_KEY",
+      "DEFAULT_CURRENCY": "MYR"
+    },
+    "authType": "none"
+  },
+  "createdAt": 1778849000000,
+  "updatedAt": 1779685911318,
+  "connectionStatus": "connected",
+  "lastTestedAt": 1779685911317
+}
