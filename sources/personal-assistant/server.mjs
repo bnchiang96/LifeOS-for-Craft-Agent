@@ -14,81 +14,10 @@ if (!SUPABASE_KEY) {
 }
 
 const REST_BASE = `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1`;
-const SQL_BASE = `${SUPABASE_URL.replace(/\/$/, "")}/sql`;
-
-const PERSONAL_DDL = `
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-CREATE TABLE IF NOT EXISTS personal_entries (
-    id             BIGSERIAL PRIMARY KEY,
-    raw_input      TEXT           NOT NULL,
-    processed_text TEXT,
-    entry_type     TEXT           NOT NULL DEFAULT 'note',
-    status         TEXT           NOT NULL DEFAULT 'open',
-    priority       INTEGER        NOT NULL DEFAULT 0,
-    tags           TEXT[]                  DEFAULT '{}',
-    remarks        JSONB          NOT NULL DEFAULT '[]'::JSONB,
-    metadata       JSONB                   DEFAULT '{}'::JSONB,
-    search_text    TEXT,
-    deleted_at     TIMESTAMPTZ,
-    created_at     TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
-    updated_at     TIMESTAMPTZ    NOT NULL DEFAULT NOW()
-);
-
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS \\$\\$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-\\$\\$ LANGUAGE plpgsql;
-
-DO \\$\\$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_personal_entries_updated_at') THEN
-        CREATE TRIGGER trigger_personal_entries_updated_at
-            BEFORE UPDATE ON personal_entries
-            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    END IF;
-END \\$\\$;
-
-CREATE INDEX IF NOT EXISTS idx_personal_entries_entry_type ON personal_entries (entry_type);
-CREATE INDEX IF NOT EXISTS idx_personal_entries_status ON personal_entries (status);
-CREATE INDEX IF NOT EXISTS idx_personal_entries_priority ON personal_entries (priority);
-CREATE INDEX IF NOT EXISTS idx_personal_entries_deleted_at_null ON personal_entries (deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_personal_entries_created_at ON personal_entries (created_at);
-
-CREATE TABLE IF NOT EXISTS personal_entry_dates (
-    id                 BIGSERIAL PRIMARY KEY,
-    personal_entry_id  BIGINT         NOT NULL REFERENCES personal_entries (id),
-    date_at            TIMESTAMPTZ    NOT NULL,
-    description        TEXT           NOT NULL,
-    deleted_at         TIMESTAMPTZ,
-    created_at         TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
-    updated_at         TIMESTAMPTZ    NOT NULL DEFAULT NOW()
-);
-
-DO \\$\\$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_personal_entry_dates_updated_at') THEN
-        CREATE TRIGGER trigger_personal_entry_dates_updated_at
-            BEFORE UPDATE ON personal_entry_dates
-            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    END IF;
-END \\$\\$;
-
-CREATE INDEX IF NOT EXISTS idx_personal_entry_dates_entry_id ON personal_entry_dates (personal_entry_id);
-CREATE INDEX IF NOT EXISTS idx_personal_entry_dates_date_at ON personal_entry_dates (date_at);
-CREATE INDEX IF NOT EXISTS idx_personal_entry_dates_deleted_at_null ON personal_entry_dates (deleted_at) WHERE deleted_at IS NULL;
-
-ALTER TABLE personal_entries DISABLE ROW LEVEL SECURITY;
-ALTER TABLE personal_entry_dates DISABLE ROW LEVEL SECURITY;
-`;
 
 const ENTRY_TYPES = ["note", "task", "reminder", "event", "idea", "journal", "grocery", "contact", "other"];
 const STATUSES = ["open", "completed", "archived", "cancelled"];
 const PERSONAL_ENTRY_RESPONSE_COLUMNS = "id,created_at,updated_at,raw_input,processed_text,entry_type,status,priority,tags,remarks,metadata,deleted_at";
-const SYSTEM_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
 function nowIso() {
   return new Date().toISOString();
@@ -150,58 +79,21 @@ function normalizeRemarks(input) {
   });
 }
 
-function getTimeZoneOffsetMinutes(timeZone, date) {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  });
-
-  const parts = Object.fromEntries(
-    formatter.formatToParts(date)
-      .filter((part) => part.type !== "literal")
-      .map((part) => [part.type, part.value])
-  );
-
-  const asUtc = Date.UTC(
-    Number(parts.year),
-    Number(parts.month) - 1,
-    Number(parts.day),
-    Number(parts.hour),
-    Number(parts.minute),
-    Number(parts.second),
-    0
-  );
-
-  return (asUtc - date.getTime()) / 60000;
-}
-
-function zonedDateBoundaryToUtc(dateOnly, boundary) {
+// Convert a local date-only boundary (YYYY-MM-DD) to UTC ISO string.
+// Server runs locally on the user's machine, so new Date() uses the local timezone.
+function dateBoundaryToUtc(dateOnly, boundary) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateOnly);
   if (!match) throw new Error(`无效的日期范围参数：${dateOnly}`);
 
-  const [, year, month, day] = match;
-  const timeParts = boundary === "start"
-    ? [0, 0, 0, 0]
-    : [23, 59, 59, 999];
+  const [_, year, month, day] = match;
+  const time = boundary === "start" ? "00:00:00" : "23:59:59.999";
+  const date = new Date(`${year}-${month}-${day}T${time}`);
 
-  const guessUtc = new Date(Date.UTC(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    timeParts[0],
-    timeParts[1],
-    timeParts[2],
-    timeParts[3]
-  ));
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`无效的日期范围参数：${dateOnly}`);
+  }
 
-  const offsetMinutes = getTimeZoneOffsetMinutes(SYSTEM_TIMEZONE, guessUtc);
-  return new Date(guessUtc.getTime() - offsetMinutes * 60000).toISOString();
+  return date.toISOString();
 }
 
 function normalizeDateBoundary(input, boundary) {
@@ -210,7 +102,7 @@ function normalizeDateBoundary(input, boundary) {
 
   const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
   const normalized = isDateOnly
-    ? zonedDateBoundaryToUtc(value, boundary)
+    ? dateBoundaryToUtc(value, boundary)
     : value;
 
   const parsed = new Date(normalized);
@@ -300,49 +192,19 @@ async function request(method, path, { query, body, object = false, prefer } = {
   return data;
 }
 
-async function ensureTables() {
-  // Quick probe: try querying personal_entries with limit=1
-  const probeUrl = new URL(`${REST_BASE}/personal_entries?select=id&limit=1`);
-  const probeRes = await fetch(probeUrl, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  });
-
-  if (probeRes.ok) {
-    process.stderr.write("[personal-assistant] Tables exist, skipping setup.\n");
-    return;
-  }
-
-  // If table doesn't exist, run the DDL
-  process.stderr.write("[personal-assistant] Tables not found, creating...\n");
-
-  const sqlRes = await fetch(SQL_BASE, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ query: PERSONAL_DDL }),
-  });
-
-  if (!sqlRes.ok) {
-    const errText = await sqlRes.text().catch(() => "Unknown error");
-    process.stderr.write(
-      `[personal-assistant] Table creation failed. Please run the SQL in 02-table.sql manually.\nError: ${errText}\n`
-    );
-    process.exit(1);
-  }
-
-  process.stderr.write("[personal-assistant] Tables created successfully.\n");
-}
-
 async function fetchDateMatchedEntryIds(fromDate, toDate) {
   const ids = new Set();
   if (!fromDate && !toDate) return ids;
 
   const query = { select: "personal_entry_id", deleted_at: "is.null" };
-  if (fromDate) query.date_at = `gte.${normalizeDateBoundary(fromDate, "start")}`;
-  if (toDate) query.date_at = `lte.${normalizeDateBoundary(toDate, "end")}`;
+  const dateAtFilters = [];
+  if (fromDate) dateAtFilters.push(`gte.${normalizeDateBoundary(fromDate, "start")}`);
+  if (toDate) dateAtFilters.push(`lte.${normalizeDateBoundary(toDate, "end")}`);
+  if (dateAtFilters.length === 1) {
+    query.date_at = dateAtFilters[0];
+  } else if (dateAtFilters.length > 1) {
+    query.date_at = dateAtFilters;
+  }
 
   const rows = await request("GET", "/personal_entry_dates", { query });
   for (const row of rows || []) ids.add(Number(row.personal_entry_id));
@@ -354,8 +216,14 @@ async function fetchCreatedMatchedEntryIds(fromDate, toDate) {
   if (!fromDate && !toDate) return ids;
 
   const query = { select: "id", deleted_at: "is.null" };
-  if (fromDate) query.created_at = `gte.${normalizeDateBoundary(fromDate, "start")}`;
-  if (toDate) query.created_at = `lte.${normalizeDateBoundary(toDate, "end")}`;
+  const createdAtFilters = [];
+  if (fromDate) createdAtFilters.push(`gte.${normalizeDateBoundary(fromDate, "start")}`);
+  if (toDate) createdAtFilters.push(`lte.${normalizeDateBoundary(toDate, "end")}`);
+  if (createdAtFilters.length === 1) {
+    query.created_at = createdAtFilters[0];
+  } else if (createdAtFilters.length > 1) {
+    query.created_at = createdAtFilters;
+  }
 
   const rows = await request("GET", "/personal_entries", { query });
   for (const row of rows || []) ids.add(Number(row.id));
@@ -634,15 +502,6 @@ async function deleteEntry(args) {
 
 const toolDefinitions = [
   {
-    name: "ensure_tables",
-    description: "Check if required tables exist in Supabase and create them if missing. Call this once after credentials are configured.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
-  },
-  {
     name: "record_entry",
     description: "Create a new personal entry and optionally attach structured dates and remarks",
     inputSchema: {
@@ -785,7 +644,6 @@ const toolDefinitions = [
 ];
 
 const toolHandlers = {
-  ensure_tables: ensureTables,
   record_entry: recordEntry,
   search_entries: searchEntries,
   update_entry: updateEntry,

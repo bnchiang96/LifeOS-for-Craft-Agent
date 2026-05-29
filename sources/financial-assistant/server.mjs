@@ -3,8 +3,6 @@
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
 const DEFAULT_CURRENCY = process.env.DEFAULT_CURRENCY || "MYR";
-const SYSTEM_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-
 if (!SUPABASE_URL) {
   process.stderr.write("ERROR: SUPABASE_URL environment variable is not set\n");
   process.exit(1);
@@ -17,150 +15,16 @@ if (!SUPABASE_KEY) {
 
 const REST_BASE = `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1`;
 const RPC_BASE = `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/rpc`;
-const SQL_BASE = `${SUPABASE_URL.replace(/\/$/, "")}/sql`;
 const EXPENSE_RESPONSE_COLUMNS = "id,total_amount,currency,transaction_date,merchant_name,merchant_info,items,remarks,payment_method,is_paylater,deleted_at,correction_of,correction_at,created_at,updated_at";
-
-const EXPENSE_DDL = `
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
-CREATE TABLE IF NOT EXISTS expenses (
-    id               BIGSERIAL PRIMARY KEY,
-    total_amount     NUMERIC(12, 2) NOT NULL CHECK (total_amount >= 0),
-    currency         TEXT           NOT NULL DEFAULT 'MYR',
-    transaction_date DATE           NOT NULL DEFAULT CURRENT_DATE,
-    merchant_name    TEXT,
-    merchant_info    JSONB                   DEFAULT '{}'::JSONB,
-    items            JSONB          NOT NULL DEFAULT '[]'::JSONB,
-    remarks          JSONB          NOT NULL DEFAULT '[]'::JSONB,
-    payment_method   TEXT           NOT NULL,
-    is_paylater      BOOLEAN        NOT NULL DEFAULT FALSE,
-    deleted_at       TIMESTAMPTZ,
-    correction_of    BIGINT REFERENCES expenses (id),
-    correction_at    TIMESTAMPTZ,
-    search_vector    tsvector,
-    created_at       TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
-    updated_at       TIMESTAMPTZ    NOT NULL DEFAULT NOW()
-);
-
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS \\$\\$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-\\$\\$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION expenses_update_search_vector()
-RETURNS TRIGGER AS \\$\\$
-BEGIN
-    NEW.search_vector :=
-        setweight(to_tsvector('english', coalesce(NEW.merchant_name, '')), 'A') ||
-        setweight(to_tsvector('english', coalesce(NEW.payment_method, '')), 'B') ||
-        setweight(to_tsvector('english', coalesce(NEW.merchant_info::text, '{}')), 'C') ||
-        setweight(to_tsvector('english', coalesce(NEW.remarks::text, '[]')), 'C') ||
-        setweight(to_tsvector('english', (
-            SELECT string_agg(
-                COALESCE(item->>'name', '') || ' ' ||
-                COALESCE(item->>'seller', '') || ' ' ||
-                COALESCE(item->'category'::text, '[]') || ' ' ||
-                COALESCE(item->'remarks'::text, '[]'),
-                ' '
-            )
-            FROM jsonb_array_elements(COALESCE(NEW.items, '[]'::jsonb)) item
-        )), 'B');
-    RETURN NEW;
-END;
-\\$\\$ LANGUAGE plpgsql;
-
-DO \\$\\$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_expenses_search_vector') THEN
-        CREATE TRIGGER trigger_expenses_search_vector
-            BEFORE INSERT OR UPDATE ON expenses
-            FOR EACH ROW EXECUTE FUNCTION expenses_update_search_vector();
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_expenses_updated_at') THEN
-        CREATE TRIGGER trigger_expenses_updated_at
-            BEFORE UPDATE ON expenses
-            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    END IF;
-END \\$\\$;
-
-CREATE OR REPLACE FUNCTION soft_delete_expense(p_id BIGINT)
-RETURNS VOID AS \\$\\$
-BEGIN
-    UPDATE expenses SET deleted_at = NOW() WHERE id = p_id AND deleted_at IS NULL;
-END;
-\\$\\$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE VIEW active_expenses AS
-SELECT * FROM expenses WHERE deleted_at IS NULL;
-
-CREATE INDEX IF NOT EXISTS idx_expenses_search_vector ON expenses USING GIN (search_vector);
-CREATE INDEX IF NOT EXISTS idx_expenses_merchant_name_trgm ON expenses USING GIN (merchant_name gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS idx_expenses_transaction_date ON expenses (transaction_date);
-CREATE INDEX IF NOT EXISTS idx_expenses_deleted_at_null ON expenses (deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_expenses_correction_of ON expenses (correction_of);
-CREATE INDEX IF NOT EXISTS idx_expenses_payment_method ON expenses (payment_method);
-CREATE INDEX IF NOT EXISTS idx_expenses_is_paylater ON expenses (is_paylater);
-
-ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
-`;
-
-async function ensureTables() {
-  // Quick probe: try querying expenses with limit=1
-  const probeUrl = new URL(`${REST_BASE}/expenses?select=id&limit=1`);
-  const probeRes = await fetch(probeUrl, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  });
-
-  if (probeRes.ok) {
-    process.stderr.write("[financial-assistant] Tables exist, skipping setup.\n");
-    return;
-  }
-
-  // If table doesn't exist, run the DDL
-  process.stderr.write("[financial-assistant] Tables not found, creating...\n");
-
-  const sqlRes = await fetch(SQL_BASE, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ query: EXPENSE_DDL }),
-  });
-
-  if (!sqlRes.ok) {
-    const errText = await sqlRes.text().catch(() => "Unknown error");
-    process.stderr.write(
-      `[financial-assistant] Table creation failed. Please run the SQL in 02-table.sql manually.\nError: ${errText}\n`
-    );
-    process.exit(1);
-  }
-
-  process.stderr.write("[financial-assistant] Tables created successfully.\n");
-}
 
 function nowIso() {
   return new Date().toISOString();
 }
 
-function formatDateInTimeZone(date = new Date(), timeZone = SYSTEM_TIMEZONE) {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const parts = Object.fromEntries(
-    formatter.formatToParts(date)
-      .filter((part) => part.type !== "literal")
-      .map((part) => [part.type, part.value])
-  );
-  return `${parts.year}-${parts.month}-${parts.day}`;
+// Format today's date as YYYY-MM-DD in the local timezone.
+// Server runs locally on the user's machine.
+function formatLocalDate(date = new Date()) {
+  return date.toLocaleDateString("en-CA");
 }
 
 function itemHasCategoryTag(item, tag) {
@@ -270,7 +134,7 @@ function normalizeExpensePayload(payload = {}, { isUpdate = false } = {}) {
   }
 
   if (!isUpdate || Object.prototype.hasOwnProperty.call(payload, "transaction_date")) {
-    next.transaction_date = String(payload.transaction_date || formatDateInTimeZone()).trim() || formatDateInTimeZone();
+    next.transaction_date = String(payload.transaction_date || formatLocalDate()).trim() || formatLocalDate();
   }
 
   if (!isUpdate || Object.prototype.hasOwnProperty.call(payload, "merchant_info")) {
@@ -353,13 +217,8 @@ async function searchExpenses(args) {
   if (paymentMethod) query.payment_method = `eq.${paymentMethod}`;
   if (typeof args.is_paylater === "boolean") query.is_paylater = `eq.${args.is_paylater}`;
 
-  const normalizedQuery = {};
-  for (const [key, value] of Object.entries(query)) {
-    normalizedQuery[key] = Array.isArray(value) ? value : value;
-  }
-
   const data = await dbRequest("GET", "/active_expenses", {
-    query: normalizedQuery,
+    query,
   });
 
   let filteredResults = data || [];
@@ -500,15 +359,6 @@ async function getExpenseHistory(args) {
 
 const toolDefinitions = [
   {
-    name: "ensure_tables",
-    description: "Check if required tables exist in Supabase and create them if missing. Call this once after credentials are configured.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
-  },
-  {
     name: "record_expense",
     description: "Create a new expense record with merchant, item, payment, and remark details",
     inputSchema: {
@@ -607,7 +457,6 @@ const toolDefinitions = [
 ];
 
 const toolHandlers = {
-  ensure_tables: ensureTables,
   record_expense: recordExpense,
   search_expenses: searchExpenses,
   update_expense: updateExpense,
