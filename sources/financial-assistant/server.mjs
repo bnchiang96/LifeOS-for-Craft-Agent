@@ -15,6 +15,7 @@ if (!SUPABASE_KEY) {
 
 const REST_BASE = `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1`;
 const RPC_BASE = `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/rpc`;
+const SQL_BASE = `${SUPABASE_URL.replace(/\/$/, "")}/sql`;
 const EXPENSE_RESPONSE_COLUMNS = "id,total_amount,currency,transaction_date,merchant_name,merchant_info,items,remarks,payment_method,is_paylater,deleted_at,correction_of,correction_at,created_at,updated_at";
 
 function nowIso() {
@@ -357,6 +358,113 @@ async function getExpenseHistory(args) {
   return buildResponse(true, { result: history.reverse() });
 }
 
+const DDL = `
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE TABLE IF NOT EXISTS expenses (
+    id               BIGSERIAL PRIMARY KEY,
+    total_amount     NUMERIC(12, 2) NOT NULL CHECK (total_amount >= 0),
+    currency         TEXT           NOT NULL DEFAULT 'MYR',
+    transaction_date DATE           NOT NULL DEFAULT CURRENT_DATE,
+    merchant_name    TEXT,
+    merchant_info    JSONB                   DEFAULT '{}'::JSONB,
+    items            JSONB          NOT NULL DEFAULT '[]'::JSONB,
+    remarks          JSONB          NOT NULL DEFAULT '[]'::JSONB,
+    payment_method   TEXT           NOT NULL,
+    is_paylater      BOOLEAN        NOT NULL DEFAULT FALSE,
+    deleted_at       TIMESTAMPTZ,
+    correction_of    BIGINT REFERENCES expenses (id),
+    correction_at    TIMESTAMPTZ,
+    search_vector    tsvector,
+    created_at       TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION expenses_update_search_vector()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.search_vector :=
+        setweight(to_tsvector('english', coalesce(NEW.merchant_name, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(NEW.payment_method, '')), 'B') ||
+        setweight(to_tsvector('english', coalesce(NEW.merchant_info::text, '{}')), 'C') ||
+        setweight(to_tsvector('english', coalesce(NEW.remarks::text, '[]')), 'C') ||
+        setweight(to_tsvector('english', (
+            SELECT string_agg(
+                COALESCE(item->>'name', '') || ' ' ||
+                COALESCE(item->>'seller', '') || ' ' ||
+                COALESCE(item->'category'::text, '[]') || ' ' ||
+                COALESCE(item->'remarks'::text, '[]'),
+                ' '
+            )
+            FROM jsonb_array_elements(COALESCE(NEW.items, '[]'::jsonb)) item
+        )), 'B');
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_expenses_search_vector') THEN
+        CREATE TRIGGER trigger_expenses_search_vector
+            BEFORE INSERT OR UPDATE ON expenses
+            FOR EACH ROW EXECUTE FUNCTION expenses_update_search_vector();
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_expenses_updated_at') THEN
+        CREATE TRIGGER trigger_expenses_updated_at
+            BEFORE UPDATE ON expenses
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION soft_delete_expense(p_id BIGINT)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE expenses SET deleted_at = NOW() WHERE id = p_id AND deleted_at IS NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE VIEW active_expenses AS
+SELECT * FROM expenses WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_expenses_search_vector ON expenses USING GIN (search_vector);
+CREATE INDEX IF NOT EXISTS idx_expenses_merchant_name_trgm ON expenses USING GIN (merchant_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_expenses_transaction_date ON expenses (transaction_date);
+CREATE INDEX IF NOT EXISTS idx_expenses_deleted_at_null ON expenses (deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_expenses_correction_of ON expenses (correction_of);
+CREATE INDEX IF NOT EXISTS idx_expenses_payment_method ON expenses (payment_method);
+CREATE INDEX IF NOT EXISTS idx_expenses_is_paylater ON expenses (is_paylater);
+
+ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
+`;
+
+async function ensureTables() {
+  const res = await fetch(SQL_BASE, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query: DDL }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to create tables: ${res.status} ${text}`);
+  }
+
+  return buildResponse(true, { message: "Tables ensured successfully" });
+}
+
 const toolDefinitions = [
   {
     name: "record_expense",
@@ -453,7 +561,16 @@ const toolDefinitions = [
       required: ["id"],
       additionalProperties: true
     }
-  }
+  },
+  {
+    name: "ensure_tables",
+    description: "Create database tables if they don't exist. Run this once during setup.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: true,
+    },
+  },
 ];
 
 const toolHandlers = {
@@ -462,6 +579,7 @@ const toolHandlers = {
   update_expense: updateExpense,
   delete_expense: deleteExpense,
   add_expense_remark: addExpenseRemark,
+  ensure_tables: ensureTables,
   get_expense_history: getExpenseHistory,
 };
 
