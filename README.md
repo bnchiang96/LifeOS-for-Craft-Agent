@@ -35,13 +35,12 @@ A personal life management setup for [Craft Agent](https://craft.do) — two MCP
 
 ## Setup
 
-The config files are pre-configured with a Supabase project. To use your own Supabase project:
-
 1. Go to your Supabase dashboard → Project Settings → API. Copy the **Project URL** and **anon key**.
 2. Open this project in Craft Agent and provide the URL and key when prompted. Both sources share the same Supabase project.
-3. Craft Agent will run `ensure_tables` to check if the database tables exist. If they do, setup is done. If not, it creates them automatically using `02-table.sql`.
-
-To use the pre-configured Supabase project, just open this project in Craft Agent — it will run `ensure_tables` automatically.
+3. Craft Agent will update `config.json` for each source:
+   - Set `args` to the absolute path of `server.mjs` on your machine
+   - Set `SUPABASE_URL` and `SUPABASE_KEY` to your project values
+4. Craft Agent will run `ensure_tables` to check if the database tables exist. If they do, setup is done. If not, it creates them automatically using `02-table.sql`.
 
 ## Folder Structure
 
