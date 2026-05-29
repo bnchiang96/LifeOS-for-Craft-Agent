@@ -11,11 +11,11 @@
     "transport": "stdio",
     "command": "node",
     "args": [
-      "server.mjs"
+      "/Users/leebonchiang/.craft-agent/workspaces/my-workspace/sources/personal-assistant/server.mjs"
     ],
     "env": {
-      "SUPABASE_URL": "YOUR_SUPABASE_URL",
-      "SUPABASE_KEY": "YOUR_SUPABASE_KEY"
+      "SUPABASE_URL": "https://hkoaspfkynrkilpitvph.supabase.co",
+      "SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhrb2FzcGZreW5ya2lscGl0dnBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1OTExMzIsImV4cCI6MjA4MDE2NzEzMn0.YctkMCiugYCe4ws6y_lshFksgDfJtWk2rBbF1M-Q69o"
     },
     "authType": "none"
   },
