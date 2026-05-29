@@ -35,58 +35,9 @@ A personal life management setup for [Craft Agent](https://craft.do) — two MCP
 
 ## Setup
 
-### 1. Create the Database Tables
-
-Run the contents of [`02-table.sql`](./02-table.sql) in your Supabase SQL Editor. This creates:
-
-- `personal_entries` + `personal_entry_dates` (for personal assistant)
-- `expenses` + `active_expenses` view (for financial assistant)
-- Necessary indexes, triggers, and functions
-
-### 2. Configure Each Source
-
-Update each `config.json` with your Supabase credentials and the absolute path to `server.mjs`.
-
-**`sources/personal-assistant/config.json`**
-
-```json
-{
-  "mcp": {
-    "args": ["/absolute/path/to/sources/personal-assistant/server.mjs"],
-    "env": {
-      "SUPABASE_URL": "https://your-project.supabase.co",
-      "SUPABASE_KEY": "your-anon-key"
-    }
-  }
-}
-```
-
-**`sources/financial-assistant/config.json`**
-
-```json
-{
-  "mcp": {
-    "args": ["/absolute/path/to/sources/financial-assistant/server.mjs"],
-    "env": {
-      "SUPABASE_URL": "https://your-project.supabase.co",
-      "SUPABASE_KEY": "your-anon-key",
-      "DEFAULT_CURRENCY": "MYR"
-    }
-  }
-}
-```
-
-### 3. Test the Sources
-
-In Craft Agent, run `source_test` on both sources to verify connectivity.
-
-### 4. Enable the LifeOS Skill
-
-The LifeOS skill (`skills/LifeOS/SKILL.md`) is automatically discovered by Craft Agent. Once the sources are connected, the skill routes your requests:
-
-- **Notes, reminders, tasks, groceries, contacts** → Personal Assistant
-- **Expenses, purchases, bills, payments** → Financial Assistant
-- **Mixed requests** → Both sources as needed
+1. Go to your Supabase dashboard → Project Settings → API. Copy the **Project URL** and **anon key**.
+2. Open this project in Craft Agent and provide the URL and key when prompted. Both sources share the same Supabase project.
+3. Craft Agent will run `ensure_tables` to check if the database tables exist. If they do, setup is done. If not, it creates them automatically using `02-table.sql`.
 
 ## Folder Structure
 
@@ -95,12 +46,12 @@ LifeOS Craft Agent/
 ├── 02-table.sql                    # Database schema (run once in Supabase)
 ├── sources/
 │   ├── personal-assistant/
-│   │   ├── config.json             # Credentials + path to server.mjs
+│   │   ├── config.json             # URL, key + path to server.mjs
 │   │   ├── guide.md                # Usage guidelines for the source
 │   │   ├── permissions.json        # Tool permission rules
 │   │   └── server.mjs              # MCP server (Node.js)
 │   └── financial-assistant/
-│       ├── config.json             # Credentials + path to server.mjs
+│       ├── config.json             # URL, key + path to server.mjs
 │       ├── guide.md                # Usage guidelines for the source
 │       ├── permissions.json        # Tool permission rules
 │       └── server.mjs              # MCP server (Node.js)
