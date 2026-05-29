@@ -1,0 +1,6 @@
+{
+  "allowedMcpPatterns": [
+    { "pattern": "search", "comment": "Allow search_expenses and search_personal in Explore mode" },
+    { "pattern": "get_expense_history", "comment": "Allow viewing expense correction chain" }
+  ]
+}

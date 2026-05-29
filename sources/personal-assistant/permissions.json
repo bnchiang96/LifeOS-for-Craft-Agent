@@ -1,8 +1,0 @@
-{
-  "allowedMcpPatterns": [
-    {
-      "pattern": "search_entries",
-      "comment": "Allow read-only personal entry searches in Explore mode"
-    }
-  ]
-}

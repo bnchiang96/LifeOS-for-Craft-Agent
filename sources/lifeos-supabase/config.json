@@ -1,0 +1,27 @@
+{
+  "id": "lifeos-supabase_f7e8d9c0",
+  "name": "LifeOS Supabase",
+  "slug": "lifeos-supabase",
+  "enabled": true,
+  "provider": "supabase",
+  "type": "mcp",
+  "icon": "🏠",
+  "tagline": "Unified personal & financial notebook backed by Supabase — expenses, reminders, tasks, notes, and more",
+  "mcp": {
+    "transport": "stdio",
+    "command": "node",
+    "args": [
+      "<ABSOLUTE_PATH_TO>/sources/lifeos-supabase/server.mjs"
+    ],
+    "env": {
+      "SUPABASE_URL": "<YOUR_SUPABASE_URL>",
+      "SUPABASE_KEY": "<YOUR_SUPABASE_ANON_KEY>",
+      "DEFAULT_CURRENCY": "MYR"
+    },
+    "authType": "none"
+  },
+  "createdAt": 1780142400000,
+  "updatedAt": 1780069935306,
+  "lastTestedAt": 1780069935306,
+  "connectionStatus": "connected"
+}
