@@ -112,7 +112,7 @@ async function rpcRequest(name, body) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const EXPENSE_RESPONSE_COLUMNS =
-  "id,total_amount,currency,transaction_date,merchant_name,merchant_info,items,remarks,payment_method,is_paylater,deleted_at,correction_of,correction_at,created_at,updated_at";
+  "id,total_amount,currency,transaction_date,merchant_name,merchant_info,metadata,items,remarks,payment_method,is_paylater,deleted_at,correction_of,correction_at,created_at,updated_at";
 
 function itemHasCategoryTag(item, tag) {
   return Boolean(item && Array.isArray(item.category) && item.category.includes(tag));
@@ -126,6 +126,8 @@ function normalizeExpensePayload(payload = {}, { isUpdate = false } = {}) {
     next.transaction_date = String(payload.transaction_date || formatLocalDate()).trim() || formatLocalDate();
   if (!isUpdate || Object.prototype.hasOwnProperty.call(payload, "merchant_info"))
     next.merchant_info = payload.merchant_info && typeof payload.merchant_info === "object" && !Array.isArray(payload.merchant_info) ? payload.merchant_info : {};
+  if (!isUpdate || Object.prototype.hasOwnProperty.call(payload, "metadata"))
+    next.metadata = payload.metadata && typeof payload.metadata === "object" && !Array.isArray(payload.metadata) ? payload.metadata : {};
   if (!isUpdate || Object.prototype.hasOwnProperty.call(payload, "items"))
     next.items = Array.isArray(payload.items) ? payload.items : [];
   if (!isUpdate || Object.prototype.hasOwnProperty.call(payload, "remarks"))
@@ -152,7 +154,8 @@ async function recordExpense(args) {
     body: {
       total_amount: payload.total_amount, currency: payload.currency,
       transaction_date: payload.transaction_date, merchant_name: payload.merchant_name,
-      merchant_info: payload.merchant_info, items: payload.items, remarks: payload.remarks,
+      merchant_info: payload.merchant_info, metadata: payload.metadata,
+      items: payload.items, remarks: payload.remarks,
       payment_method: payload.payment_method, is_paylater: payload.is_paylater,
     },
     query: { select: EXPENSE_RESPONSE_COLUMNS },
@@ -531,6 +534,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     transaction_date DATE           NOT NULL DEFAULT CURRENT_DATE,
     merchant_name    TEXT,
     merchant_info    JSONB                   DEFAULT '{}'::JSONB,
+    metadata         JSONB                   DEFAULT '{}'::JSONB,
     items            JSONB          NOT NULL DEFAULT '[]'::JSONB,
     remarks          JSONB          NOT NULL DEFAULT '[]'::JSONB,
     payment_method   TEXT           NOT NULL,
@@ -678,6 +682,7 @@ const toolDefinitions = [
       properties: {
         total_amount: { type: "number" }, currency: { type: "string" }, transaction_date: { type: "string" },
         merchant_name: { type: "string" }, merchant_info: { type: "object", additionalProperties: true },
+        metadata: { type: "object", additionalProperties: true, description: "people, location, purpose, related_records, related_expenses, source, etc." },
         items: { type: "array", items: { type: "object", additionalProperties: true } },
         remarks: { type: "array", items: { type: "object", additionalProperties: true } },
         payment_method: { type: "string" }, is_paylater: { type: "boolean" },
@@ -708,6 +713,7 @@ const toolDefinitions = [
         id: { type: "integer" }, total_amount: { type: "number" }, currency: { type: "string" },
         transaction_date: { type: "string" }, merchant_name: { type: "string" },
         merchant_info: { type: "object", additionalProperties: true },
+        metadata: { type: "object", additionalProperties: true, description: "people, location, purpose, related_records, related_expenses, source, etc." },
         items: { type: "array", items: { type: "object", additionalProperties: true } },
         remarks: { type: "array", items: { type: "object", additionalProperties: true } },
         payment_method: { type: "string" }, is_paylater: { type: "boolean" },

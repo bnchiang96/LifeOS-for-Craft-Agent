@@ -104,6 +104,7 @@ CREATE TABLE IF NOT EXISTS expenses
     transaction_date DATE           NOT NULL DEFAULT CURRENT_DATE,
     merchant_name    TEXT,
     merchant_info    JSONB                   DEFAULT '{}'::JSONB,
+    metadata         JSONB                   DEFAULT '{}'::JSONB,
     items            JSONB          NOT NULL DEFAULT '[]'::JSONB,
     remarks          JSONB          NOT NULL DEFAULT '[]'::JSONB,
     payment_method   TEXT           NOT NULL,
