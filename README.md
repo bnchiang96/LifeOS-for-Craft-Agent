@@ -160,7 +160,7 @@ The MCP server (`server.mjs`) is a Node.js process that Craft Agent spawns as a 
 | **Multiple dates** | Personal entries can have multiple `date_entries` (e.g., prep date + event date). Search matches across all of them. |
 | **Full-text search** | Expenses have a `tsvector` search column built from merchant name, items, payment method, and remarks. Categories are filterable. |
 | **Auto PayLater detection** | The server infers `is_paylater` from the payment method name (e.g., `SPayLater`, `Grab PayLater`, `Atome`). |
-| **Metadata linking** | Every record captures `people`, `location`, `purpose`, and cross-references to related records — turning flat entries into a connected knowledge graph. |
+| **Metadata linking** | Every personal entry captures `people`, `location`, `purpose`, entities, mood, and cross-references to related records and expenses — turning flat entries into a connected knowledge graph. |
 | **Behavioral guide** | `guide.md` is the source of truth for how the agent should behave — tone, routing, time handling, receipt parsing, refunds, metadata extraction, and more. Read it to understand the full operating concept. |
 
 ## License

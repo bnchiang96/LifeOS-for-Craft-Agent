@@ -31,34 +31,76 @@ Use this source when the user wants a natural assistant that can both:
 
 ## Metadata Rules — Building the Knowledge Graph
 
-Metadata is the connective tissue of LifeOS personal entries. Every personal entry you create MUST have rich metadata that captures people, places, purpose, and links to related records. This turns a flat list of entries into an interconnected knowledge graph.
+Metadata is the connective tissue of LifeOS personal entries. Every personal entry you create MUST have rich metadata that captures people, places, purpose, entities, context, and links to related records. This turns a flat list of entries into an interconnected knowledge graph.
 
-### Standard Fields (personal entries only)
+### Standard Fields
 
 | Field | Type | What to put | Example |
 |-------|------|-------------|----------|
 | `people` | `string[]` | Every person mentioned — names, relationships, roles | `["Miko", "Jason"]`, `["妈妈", "爸爸"]` |
-| `location` | `string` | Where it happened / will happen. Be specific. | `"Pavilion KL"`, `"Mid Valley Megamall"`, `"Johor Bahru"` |
-| `purpose` | `string` | Why this exists — the intent or occasion | `"celebrate promotion"`, `"monthly groceries"`, `"follow-up meeting"` |
-| `related_records` | `number[]` | IDs of related personal entries | `[42, 87]` |
-| `related_expenses` | `number[]` | IDs of related expenses | `[15, 23]` |
+| `location` | `string` | Where it happened / will happen. Be specific. | `"Pavilion KL, Level 6"` |
+| `purpose` | `string` | Why this entry exists — the intent or occasion | `"celebrate promotion"`, `"car maintenance tracking"` |
+| `related_records` | `number[]` | IDs of personal entries on the **same topic** (follow-ups, tracking over time) | `[42, 87]` |
+| `related_expenses` | `number[]` | IDs of expenses that **triggered this entry** or are tied to the action | `[15, 23]` |
 | `source` | `string` | Where this info came from | `"chat"`, `"receipt"`, `"email"`, `"whatsapp"` |
+| `event_type` | `string` | The kind of event or activity | `"dinner"`, `"meeting"`, `"travel"`, `"shopping"`, `"maintenance"`, `"celebration"` |
+| `duration` | `string` | How long (if applicable) | `"2 hours"`, `"3 days"`, `"whole day"` |
+| `cost` | `number` | Associated cost (even if not recorded as an expense) | `120.00` |
+| `mood` | `string` | For journal entries — how you felt | `"excited"`, `"tired"`, `"happy"`, `"stressed"` |
+| `sentiment` | `string` | Overall tone | `"positive"`, `"negative"`, `"neutral"` |
+| `recurring` | `boolean` | Does this repeat? | `true`, `false` |
+| `frequency` | `string` | If recurring, how often? | `"daily"`, `"weekly"`, `"monthly"`, `"yearly"` |
+| `companies` | `string[]` | Companies, organizations mentioned | `["Shopee"`, `"Grab"`, `"CIMB"]` |
+| `brands` | `string[]` | Product brands mentioned | `["Nike"`, `"Samsung"`, `"Apple"]` |
+| `products` | `string[]` | Specific products or items mentioned | `["iPhone 16"`, `"Air Force 1"]` |
+| `mentions` | `string[]` | Any other proper nouns, keywords, references the user dropped | `["Q2 roadmap"`, `"SOCSO"`, `"LHDN"]` |
 
 ### Extraction Rules — ALWAYS extract these from the user's message
 
 1. **Scan for names** — Any person mentioned, even indirectly ("with Miko", "for mom", "Jason's wedding"). Capture them all in `people`.
 2. **Scan for places** — Any location, venue, area, city, or landmark mentioned. Be specific.
-3. **Infer the purpose** — What is this actually about? Even if not explicitly stated, infer from context (e.g., "dinner with Miko at Hilton" → purpose: "catch-up dinner"). If unclear, leave it blank — never guess wildly.
-4. **Cross-reference** — If the current entry relates to any previously stored record, add its ID. This is the most powerful metadata field — it creates the knowledge graph.
+3. **Infer the purpose** — What is this actually about? Even if not explicitly stated, infer from context. If unclear, leave it blank — never guess wildly.
+4. **Extract entities** — Companies, brands, products mentioned → populate accordingly.
+5. **Catch proper nouns** — Anything capitalized or distinctive (project names, government bodies, apps, platforms) → capture in `mentions`.
+6. **Detect mood & sentiment** — For journal-like entries, capture the emotional tone.
+7. **Detect recurrence** — If the user implies this repeats ("every week", "monthly"), set `recurring: true` and `frequency`.
+8. **Cross-reference** — The most powerful field. If this entry relates to any previously stored record, add its ID.
 
-### When to cross-reference (`related_records` / `related_expenses`)
+### `related_records` — Same Topic, Follow-ups, Tracking
 
-- A personal entry and an expense are about the **same event** → link the expense ID into `related_expenses`
-- A personal entry is a **follow-up** to an earlier one → link it via `related_records`
-- An entry is part of a **larger project/trip/event** that has other entries → link them
-- A contact note references a person who appears in other records → link them
+Use `related_records` to chain entries about the **same subject over time**:
 
-**When linking:** after creating the new entry, also update the existing record's metadata to add the back-reference (if the existing record is also a personal entry).
+- A follow-up note on a previous entry → link it
+- Multiple entries tracking the same thing (e.g., car maintenance logs, project updates) → all linked together
+- An entry that continues or builds on a prior conversation → link it
+
+**Example:** User has been tracking their car battery:
+> Entry #10: "Car battery changed at workshop, RM350" → `related_records: []` (first entry)
+> Entry #15: "Battery still weak after 2 weeks, going back to workshop" → `related_records: [10]`
+> Entry #22: "Workshop replaced battery under warranty, settled" → `related_records: [10, 15]`
+
+**When linking:** after creating the new entry, also update the prior entries' `related_records` to include the new ID.
+
+### `related_expenses` — Purchase-Triggered Actions
+
+Use `related_expenses` when an entry is **triggered by a purchase or related to a spending action**:
+
+- You bought something and now you're tracking its usage → link the purchase expense
+- A reminder to pay a bill → link the bill expense
+- A task to follow up on a refund → link the original expense
+- A maintenance log for something you bought → link the purchase expense
+
+**Example:**
+> User: "Bought iPhone 16 today RM4999 — reminder to transfer data and set up next week"
+
+1. `record_expense` — iPhone 16, RM4999, ShopeePay (→ expense #200)
+2. `record_personal` — "transfer data and set up iPhone 16" with:
+   - `metadata.products: ["iPhone 16"]`
+   - `metadata.brands: ["Apple"]`
+   - `metadata.related_expenses: [200]`
+   - `metadata.purpose: "new phone setup"`
+
+Later, when the user asks "what was that phone setup about?" → search finds the entry, follow `related_expenses` to see the purchase details.
 
 ### Metadata is NEVER asked — it's extracted
 
@@ -66,13 +108,23 @@ Metadata is the connective tissue of LifeOS personal entries. Every personal ent
 - Extract what you can from what they said. If they didn't mention it, leave it out.
 - Better to have partial metadata than to interrogate the user.
 
-### Metadata for Personal Entries
+### Full Metadata Example
 
 ```json
 {
   "people": ["Miko", "Jason"],
-  "location": "Pavilion KL, Level 6",
+  "location": "Nobu Kuala Lumpur",
   "purpose": "celebrate Miko's promotion dinner",
+  "event_type": "dinner",
+  "duration": "3 hours",
+  "cost": 480.00,
+  "mood": "happy",
+  "sentiment": "positive",
+  "recurring": false,
+  "companies": [],
+  "brands": [],
+  "products": [],
+  "mentions": ["Nobu"],
   "related_records": [42],
   "related_expenses": [128],
   "source": "chat"
@@ -81,16 +133,7 @@ Metadata is the connective tissue of LifeOS personal entries. Every personal ent
 
 - `record_personal` accepts `metadata` as an optional object. Always populate it.
 - `update_personal` can update metadata — when you discover new connections, enrich the metadata.
-
-### 🔄 Cross-referencing with Expenses
-
-When a personal entry and an expense are about the same event, add the expense ID to `related_expenses`:
-
-**Example flow:**
-> User: "Dinner RM120 at Nobu with Miko — also remind me to buy her a gift"
-
-1. `record_expense` (RM120, Nobu, Miko)
-2. `record_personal` (buy gift reminder, Miko) with `metadata.related_expenses: [new_expense_id]`
+- All fields are optional — only populate what you can extract from the user's message.
 
 ### Using Metadata in Search
 
@@ -98,8 +141,11 @@ When the user asks contextual questions, use metadata to surface related records
 
 - "What did I do with Miko last month?" → search personal entries, filter by `metadata.people`
 - "What entries do I have at Pavilion?" → search personal entries, filter by `metadata.location`
-- "What was that dinner about?" → search, then look at `metadata.purpose`
-- "Show me everything related to that trip" → search for entries where `metadata.related_records` or `metadata.related_expenses` contains the trip's entry ID
+- "What was that dinner about?" → search, then look at `metadata.purpose` and `metadata.event_type`
+- "Show me everything about the car battery issue" → follow the `related_records` chain
+- "What did I buy from Shopee recently?" → search entries where `metadata.companies` contains `Shopee`
+- "Any positive things that happened this week?" → filter by `metadata.sentiment: "positive"`
+- "How's my mood been lately?" → scan recent entries for `metadata.mood`
 
 ---
 
