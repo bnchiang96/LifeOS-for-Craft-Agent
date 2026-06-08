@@ -31,9 +31,9 @@ Use this source when the user wants a natural assistant that can both:
 
 ## Metadata Rules — Building the Knowledge Graph
 
-Metadata is the connective tissue of LifeOS. Every record you create MUST have rich metadata that links people, places, purposes, and related records together. This turns a flat list of entries into an interconnected knowledge graph.
+Metadata is the connective tissue of LifeOS personal entries. Every personal entry you create MUST have rich metadata that captures people, places, purpose, and links to related records. This turns a flat list of entries into an interconnected knowledge graph.
 
-### Standard Fields (both expenses and personal entries)
+### Standard Fields (personal entries only)
 
 | Field | Type | What to put | Example |
 |-------|------|-------------|----------|
@@ -48,17 +48,17 @@ Metadata is the connective tissue of LifeOS. Every record you create MUST have r
 
 1. **Scan for names** — Any person mentioned, even indirectly ("with Miko", "for mom", "Jason's wedding"). Capture them all in `people`.
 2. **Scan for places** — Any location, venue, area, city, or landmark mentioned. Be specific.
-3. **Infer the purpose** — What is this actually about? Even if not explicitly stated, infer from context (e.g., "lunch RM50 at Hilton" → purpose: "business lunch" or "catch-up meal"). If unclear, leave it blank — never guess wildly.
-4. **Cross-reference** — If the current message relates to any previously stored record, add its ID. This is the most powerful metadata field — it creates the knowledge graph.
+3. **Infer the purpose** — What is this actually about? Even if not explicitly stated, infer from context (e.g., "dinner with Miko at Hilton" → purpose: "catch-up dinner"). If unclear, leave it blank — never guess wildly.
+4. **Cross-reference** — If the current entry relates to any previously stored record, add its ID. This is the most powerful metadata field — it creates the knowledge graph.
 
 ### When to cross-reference (`related_records` / `related_expenses`)
 
-- A personal entry and an expense are about the **same event** → link them bidirectionally
-- A personal entry is a **follow-up** to an earlier one → link it
-- An expense is part of a **larger project/trip/event** that has a personal entry → link it
+- A personal entry and an expense are about the **same event** → link the expense ID into `related_expenses`
+- A personal entry is a **follow-up** to an earlier one → link it via `related_records`
+- An entry is part of a **larger project/trip/event** that has other entries → link them
 - A contact note references a person who appears in other records → link them
 
-**When linking:** after creating the new record, also update the existing record's metadata to add the back-reference.
+**When linking:** after creating the new entry, also update the existing record's metadata to add the back-reference (if the existing record is also a personal entry).
 
 ### Metadata is NEVER asked — it's extracted
 
@@ -82,46 +82,24 @@ Metadata is the connective tissue of LifeOS. Every record you create MUST have r
 - `record_personal` accepts `metadata` as an optional object. Always populate it.
 - `update_personal` can update metadata — when you discover new connections, enrich the metadata.
 
-### Metadata for Expenses
+### 🔄 Cross-referencing with Expenses
 
-```json
-{
-  "people": ["Miko"],
-  "location": "Nobu Kuala Lumpur",
-  "purpose": "celebration dinner",
-  "related_records": [87],
-  "related_expenses": [],
-  "source": "receipt"
-}
-```
-
-- `record_expense` accepts `metadata` as an optional object. Always populate it.
-- `update_expense` can update metadata — enrich it when you find connections.
-- `merchant_info` remains separate for merchant-specific data (seller, order_id, receipt_no, etc.).
-
-### 🔄 Bi-directional Linking Workflow
-
-When a personal entry and an expense are about the same event:
-
-1. Create the first record (e.g., expense) — include `related_records` if you already know the personal entry ID
-2. Create the second record (e.g., personal entry) — include the expense ID in `related_expenses`
-3. Update the first record's metadata to add the back-reference to the second record's ID
+When a personal entry and an expense are about the same event, add the expense ID to `related_expenses`:
 
 **Example flow:**
 > User: "Dinner RM120 at Nobu with Miko — also remind me to buy her a gift"
 
-1. `record_expense` with `metadata.people: ["Miko"], metadata.location: "Nobu", metadata.purpose: "dinner"`
-2. `record_personal` with `metadata.people: ["Miko"], metadata.related_expenses: [new_expense_id]`
-3. `update_expense` to add `metadata.related_records: [new_personal_id]`
+1. `record_expense` (RM120, Nobu, Miko)
+2. `record_personal` (buy gift reminder, Miko) with `metadata.related_expenses: [new_expense_id]`
 
 ### Using Metadata in Search
 
 When the user asks contextual questions, use metadata to surface related records:
 
-- "What did I do with Miko last month?" → search both expenses and personal entries, filter by `metadata.people`
-- "How much have I spent at Pavilion?" → search expenses, filter by `metadata.location`
+- "What did I do with Miko last month?" → search personal entries, filter by `metadata.people`
+- "What entries do I have at Pavilion?" → search personal entries, filter by `metadata.location`
 - "What was that dinner about?" → search, then look at `metadata.purpose`
-- "Show me everything related to that trip" → search for records where `metadata.related_records` or `metadata.related_expenses` contains the trip's entry ID
+- "Show me everything related to that trip" → search for entries where `metadata.related_records` or `metadata.related_expenses` contains the trip's entry ID
 
 ---
 
