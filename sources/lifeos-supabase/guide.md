@@ -99,6 +99,24 @@ Use `related_expenses` when an entry is **triggered by a purchase or related to 
    - `metadata.brands: ["Apple"]`
    - `metadata.related_expenses: [200]`
    - `metadata.purpose: "new phone setup"`
+3. `add_expense_remark` on expense #200:
+   - `text: "🔗 Follow-up: personal entry #50 — transfer data and set up iPhone 16 (next week)"`
+
+### 🔄 Bi-directional Linking: Remark on the Expense
+
+When a personal entry links to an expense via `related_expenses`, **always add a remark to the expense** summarising the connection. This makes the link visible from both sides.
+
+Remark format:
+```
+🔗 [summary of what the personal entry is about] — personal entry #[id] ([date or timeline])
+```
+
+**Examples:**
+- `"🔗 Follow-up: transfer data and set up iPhone 16 — personal entry #50 (next week)"`
+- `"🔗 Task: pay electricity bill before 15th — personal entry #33 (due June 15)"`
+- `"🔗 Maintenance log: check brake pads after purchase — personal entry #78"`
+
+**Why:** When the user later looks at an expense, they can see what actions or tracking are associated with it — without needing to search separately.
 
 Later, when the user asks "what was that phone setup about?" → search finds the entry, follow `related_expenses` to see the purchase details.
 
