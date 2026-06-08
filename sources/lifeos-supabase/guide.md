@@ -331,13 +331,14 @@ When deleting a record:
 - Status values: `open` · `completed` · `archived` · `cancelled`
 - If `priority` is unclear, default to `0`.
 - Priority values: `0` (low) · `1` (medium) · `2` (high)
-- 🔴 **MANDATORY: Any date mentioned that is NOT today MUST go into `date_entries`.**
-  - If the user says "March 20 dinner with mom" and today is June 8 → `date_entries: [{ date_at: "2026-03-20T...", description: "dinner with mom" }]`
-  - If the user says "remind me next Friday" → `date_entries: [{ date_at: "<next Friday>", description: "reminder" }]`
-  - **Why:** Searching by date range only matches `date_entries` and `created_at`. Without it, past/future entries are invisible to date searches.
-  - Even for past events being logged today → the event date goes in `date_entries`.
-- Use `date_entries` for any date mentioned, even approximate ("sometime next week" → best-guess date).
-- If no date is mentioned at all, `date_entries` can be empty — the entry will be found by `created_at`.
+- 🔴 **MANDATORY: If the entry involves ANY date or time, it MUST use `date_entries`.**
+  - Today's date too: "lunch today" → `date_entries: [{ date_at: "<today>", description: "lunch" }]`
+  - Past events: "March 20 dinner with mom" → `date_entries: [{ date_at: "2026-03-20T...", description: "dinner with mom" }]`
+  - Future reminders: "remind me next Friday" → `date_entries: [{ date_at: "<next Friday>", description: "reminder" }]`
+  - Time only: "call at 3pm" → `date_entries: [{ date_at: "<today 3pm>", description: "call" }]`
+  - Approximate: "sometime next week" → best-guess date in `date_entries`
+  - **Why:** Date-range searches only match `date_entries`. Without it, entries are invisible to time-based queries.
+- Only leave `date_entries` empty when the entry has absolutely no date or time context (pure note, idea, contact info).
 - Use `add_personal_remark` for follow-up notes when the main entry stays the same.
 - If structured details changed (date, timeline, status, key facts), use:
   1. `add_personal_remark` (preserve history)
