@@ -66,59 +66,40 @@ Metadata is the connective tissue of LifeOS personal entries. Every personal ent
 7. **Detect recurrence** — If the user implies this repeats ("every week", "monthly"), set `recurring: true` and `frequency`.
 8. **Cross-reference** — The most powerful field. If this entry relates to any previously stored record, add its ID.
 
+### ⚠️ MANDATORY: Linking Checklist — Execute Every Time
+
+**Before you call `record_personal`, you MUST:**
+
+1. **Search for related entries** — call `search_personal` with the same keywords, people, or topic from the user's message. If any results look like the same topic, capture their IDs.
+2. **Search for related expenses** — if the user mentions spending, a purchase, or anything money-related, call `search_expenses`. If the expense was just created in this same conversation, use its ID directly.
+3. **Populate `related_records`** — put every matching entry ID found. If this is the first entry on a topic, it's OK to be empty.
+4. **Populate `related_expenses`** — put every linked expense ID.
+5. **After recording** — if you added entries to `related_records`, go back and update those older entries' `related_records` to include the new ID (back-link).
+6. **After recording** — if you added entries to `related_expenses`, call `add_expense_remark` on each expense with the bidirectional link.
+
 ### `related_records` — Same Topic, Follow-ups, Tracking
 
-Use `related_records` to chain entries about the **same subject over time**:
+Chain entries about the **same subject over time**. Before creating a personal entry, always search first:
 
-- A follow-up note on a previous entry → link it
-- Multiple entries tracking the same thing (e.g., car maintenance logs, project updates) → all linked together
-- An entry that continues or builds on a prior conversation → link it
+- If the user mentions a person → search for entries with that person
+- If the user mentions a topic/project → search for entries about that topic
+- If the user says "still", "again", "update on", "follow up" → it's definitely a continuation
 
-**Example:** User has been tracking their car battery:
-> Entry #10: "Car battery changed at workshop, RM350" → `related_records: []` (first entry)
-> Entry #15: "Battery still weak after 2 weeks, going back to workshop" → `related_records: [10]`
-> Entry #22: "Workshop replaced battery under warranty, settled" → `related_records: [10, 15]`
-
-**When linking:** after creating the new entry, also update the prior entries' `related_records` to include the new ID.
+**Example:** User tracking car battery:
+> Search → finds entry #10 ("Car battery changed") → new entry gets `related_records: [10]` → then update #10 to add the new ID
 
 ### `related_expenses` — Purchase-Triggered Actions
 
-Use `related_expenses` when an entry is **triggered by a purchase or related to a spending action**:
+Link expenses that triggered or are tied to this entry:
 
-- You bought something and now you're tracking its usage → link the purchase expense
-- A reminder to pay a bill → link the bill expense
-- A task to follow up on a refund → link the original expense
-- A maintenance log for something you bought → link the purchase expense
+- Just recorded an expense in this conversation? → add its ID
+- User mentions a past purchase? → search expenses, add matching IDs
+- Bill reminder, refund follow-up, maintenance log? → link the original expense
 
-**Example:**
-> User: "Bought iPhone 16 today RM4999 — reminder to transfer data and set up next week"
-
-1. `record_expense` — iPhone 16, RM4999, ShopeePay (→ expense #200)
-2. `record_personal` — "transfer data and set up iPhone 16" with:
-   - `metadata.products: ["iPhone 16"]`
-   - `metadata.brands: ["Apple"]`
-   - `metadata.related_expenses: [200]`
-   - `metadata.purpose: "new phone setup"`
-3. `add_expense_remark` on expense #200:
-   - `text: "🔗 Follow-up: personal entry #50 — transfer data and set up iPhone 16 (next week)"`
-
-### 🔄 Bi-directional Linking: Remark on the Expense
-
-When a personal entry links to an expense via `related_expenses`, **always add a remark to the expense** summarising the connection. This makes the link visible from both sides.
-
-Remark format:
+**After linking to expenses, always add a remark on each expense:**
 ```
-🔗 [summary of what the personal entry is about] — personal entry #[id] ([date or timeline])
+🔗 [summary] — personal entry #[id] ([date/timeline])
 ```
-
-**Examples:**
-- `"🔗 Follow-up: transfer data and set up iPhone 16 — personal entry #50 (next week)"`
-- `"🔗 Task: pay electricity bill before 15th — personal entry #33 (due June 15)"`
-- `"🔗 Maintenance log: check brake pads after purchase — personal entry #78"`
-
-**Why:** When the user later looks at an expense, they can see what actions or tracking are associated with it — without needing to search separately.
-
-Later, when the user asks "what was that phone setup about?" → search finds the entry, follow `related_expenses` to see the purchase details.
 
 ### Metadata is NEVER asked — it's extracted
 
