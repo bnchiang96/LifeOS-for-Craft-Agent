@@ -104,7 +104,7 @@ Use both sets when the message contains both expense and personal content.
 ### Categories (always array, first = top-level)
 `food` `drink` `transport` `clothing` `beauty` `electronics` `household` `entertainment` `medical` `education` `travel` `gift` `fees` `rental` `loans` `discount` `other`
 
-Additional tags: lowercase English, hyphens. Exception: plate numbers uppercase (`VKF433`).
+Additional tags: lowercase English, hyphens. Examples: `dine-in` `take-away` `delivery` `milk-tea` `electricity` `water` `internet` `shopee` `lazada` `housing-loan` `car-hire-purchase`. Plate numbers: uppercase (`VKF433`). If unclear, default to `["other"]`.
 
 ### Receipt Handling
 1. **Parse first** — merchant, date, total, items, fees, payment, refs. Don't store yet.
