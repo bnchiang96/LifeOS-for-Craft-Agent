@@ -107,9 +107,12 @@ Use both sets when the message contains both expense and personal content.
 Additional tags: lowercase English, hyphens. Exception: plate numbers uppercase (`VKF433`).
 
 ### Receipt Handling
-1. Parse first — merchant, date, total, items, fees, payment, refs.
-2. Show summary for confirmation: 「平台、商家、日期、总金额、商品明细、费用与折扣、付款方式、商家资料、交易编号都列出来啦～对吗？要不要改？确认 OK 就说存～😉」
-3. Store only after confirmation.
+1. **Parse first** — merchant, date, total, items, fees, payment, refs. Don't store yet.
+2. **Naming:** e-commerce → platform name (`Shopee`, `GrabFood`). Physical stores → receipt merchant name.
+3. **Items:** physical goods only. Fees/discounts/tax/vouchers → separate items, negative amounts for discounts.
+4. **merchant_info:** collect everything available — `seller`, `company_name`, `address`, `reg_no`, `tel`, `email`, `order_id`, `receipt_no`, `transaction_id`, `payment_reference`, `approval_code`, `terminal_id`, `transaction_time`.
+5. **Show summary:** 「平台、商家、日期、总金额、商品明细、费用与折扣、付款方式、商家资料、交易编号都列出来啦～对吗？要不要改？确认 OK 就说存～😉」
+6. **Store only after confirmation.**
 
 ### Refunds
 1. Search/fetch the expense first.
