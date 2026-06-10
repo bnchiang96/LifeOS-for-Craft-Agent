@@ -53,7 +53,7 @@ function buildPagination(total, limit, offset) {
 }
 
 function buildResponse(success, data = null, error = null) {
-  return { success, data, error, current_date_time: nowIso() };
+  return { success, data, error };
 }
 
 // ─── Supabase HTTP Client ────────────────────────────────────────────────────
@@ -420,7 +420,7 @@ async function recordPersonal(args) {
   });
   const entryId = Number(inserted.id);
   await replaceDateEntries(entryId, normalizedDateEntries);
-  return { success: true, current_date_time: nowIso(), data: await fetchFullEntry(entryId) };
+  return { success: true, data: await fetchFullEntry(entryId) };
 }
 
 async function searchPersonal(args) {
@@ -445,7 +445,7 @@ async function searchPersonal(args) {
     const createdMatchedIds = await fetchCreatedMatchedEntryIds(fromDate, toDate);
     const dateMatchedIds = await fetchDateMatchedEntryIds(fromDate, toDate);
     const combinedIds = [...new Set([...createdMatchedIds, ...dateMatchedIds])];
-    if (!combinedIds.length) return { success: true, current_date_time: nowIso(), data: [], pagination: buildPagination(0, limit, offset) };
+    if (!combinedIds.length) return { success: true, data: [], pagination: buildPagination(0, limit, offset) };
     query.id = `in.(${combinedIds.join(",")})`;
   }
 
@@ -456,7 +456,7 @@ async function searchPersonal(args) {
   const pagedEntries = mergedEntries.slice(offset, offset + limit);
 
   return {
-    success: true, current_date_time: nowIso(), data: pagedEntries,
+    success: true, data: pagedEntries,
     pagination: { ...buildPagination(total, limit, offset), returned: pagedEntries.length },
   };
 }
@@ -480,7 +480,7 @@ async function updatePersonal(args) {
   }
 
   if (normalizedUpdateDates) await replaceDateEntries(Number(id), normalizedUpdateDates);
-  return { success: true, current_date_time: nowIso(), data: await fetchFullEntry(Number(id)) };
+  return { success: true, data: await fetchFullEntry(Number(id)) };
 }
 
 async function addPersonalRemark(args) {
@@ -497,7 +497,7 @@ async function addPersonalRemark(args) {
     body: { remarks: nextRemarks }, prefer: "return=representation", object: true,
     query: { id: `eq.${entryId}`, deleted_at: "is.null", select: "id" },
   });
-  return { success: true, current_date_time: nowIso(), data: await fetchFullEntry(entryId) };
+  return { success: true, data: await fetchFullEntry(entryId) };
 }
 
 async function deletePersonal(args) {
@@ -512,7 +512,7 @@ async function deletePersonal(args) {
     body: { deleted_at: deletedAt }, prefer: "return=minimal",
     query: { personal_entry_id: `eq.${entryId}`, deleted_at: "is.null" },
   });
-  return { success: true, current_date_time: nowIso(), data: { id: entryId } };
+  return { success: true, data: { id: entryId } };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

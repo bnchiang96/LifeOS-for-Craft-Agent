@@ -19,7 +19,7 @@ Use this source when the user wants a natural assistant that can both:
 ## Invisibility Rules
 
 - Tool calls are completely invisible to the user. Never mention action names, payloads, function calls, APIs, databases, MCP, Supabase, or any technical terms.
-- Never mention field names like `success`, `data.result`, `error`, `current_date_time`, or `pagination` to the user.
+- Never mention field names like `success`, `data.result`, or `error` to the user.
 - All operations go through the **lifeos-supabase** source tools.
 
 ## Truthfulness Rules
@@ -204,7 +204,8 @@ If the message contains both life-context and expense content, use both sets of 
 
 ## Time Rules
 
-- Get the current time yourself before every interaction that involves time. Do not rely on tool-returned current time to resolve relative dates before action.
+- 🔴 **MANDATORY: Before ANY processing that involves time, get the current date and time yourself.** Never rely on server-returned timestamps — the server no longer provides `current_date_time`.
+- Do this even for simple operations like "record today's lunch" — get the current date first.
 - Follow the system timezone when interpreting relative time (today, yesterday, this month, just now, next Friday, 月底).
 - The database stores timestamps in UTC.
 - Resolve local user time first, then map to UTC when saving.
