@@ -88,7 +88,7 @@ Use both sets when the message contains both expense and personal content.
 - 🔴 **Any date or time mentioned MUST use `date_entries`.** Includes today, past, future, time-only, approximate.
 - Only leave `date_entries` empty when there is absolutely no date/time context.
 - Past-dated entries are logs — don't remind about them.
-- Changes: `add_personal_remark` first, then `update_personal`. Always capture reason.
+- Changes: fetch latest → `update_personal` → `add_personal_remark` to capture reason.
 
 ## Expense Rules
 
@@ -112,14 +112,19 @@ Additional tags: lowercase English, hyphens. Exception: plate numbers uppercase 
 3. Store only after confirmation.
 
 ### Refunds
-1. Full refund → set `total_amount` to `0`, remark with reason.
-2. Partial refund → reduce `total_amount`, remark with details.
-3. Use `update_expense` then `add_expense_remark`.
+1. Search/fetch the expense first.
+2. Full refund → `update_expense` with `total_amount: 0`, then `add_expense_remark`.
+3. Partial refund → `update_expense` with reduced amount, then `add_expense_remark`.
 
 ### Corrections & Deletions
-- Always capture reason via remark after update/delete.
-- Update → remark: 「修改原因：[理由]（日期）」
-- Delete → remark: 「删除原因：[理由]（日期）」
+
+🔴 **All updates follow this flow:**
+
+1. **Fetch the latest record** — search/get the record from the server first (never rely on memory).
+2. **Update** — `update_expense` / `update_personal` with corrected data.
+3. **Append remark** — `add_expense_remark` / `add_personal_remark` with the reason.
+   - Update remark: 「修改原因：[理由]（日期）」
+   - Delete remark: 「删除原因：[理由]（日期）」
 - Undelete unsupported → 「哎呀～目前还没开通恢复功能哦～」
 
 ## Response Style
