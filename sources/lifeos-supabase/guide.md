@@ -68,22 +68,16 @@ Use both sets when the message contains both expense and personal content.
 | `related_expenses` | `number[]` | Expense IDs that triggered this entry |
 | `source` | `string` | chat, receipt, email, whatsapp |
 
-### 🔴 Linking Checklist — Before `record_personal`
+### 🔴 Linking Rules
 
-1. **Search for related entries** — `search_personal` with keywords/people from the message. Capture matching IDs.
-2. **Search for related expenses** — if money/purchase mentioned, `search_expenses` or use same-conversation expense IDs.
-3. **Populate `related_records`** and **`related_expenses`** with found IDs.
-4. **After recording** — back-link older entries via `update_personal` on their `related_records`.
-5. **After recording** — if `related_expenses` populated, `add_expense_remark` on each expense:
-   ```
-   🔗 [summary] — personal entry #[id] ([date/timeline])
-   ```
-
-### When to link
-
-- User says "still", "again", "update on", "follow up" → search and link.
-- Same-conversation expense → auto-link without search.
-- Same person, topic, or project as prior entries → link.
+- **Link what you know.** If a related entry or expense was just processed or mentioned in this conversation, add its ID directly — no search needed.
+- **If the user says "still", "again", "update on", "follow up"** — search for the prior entry, then link.
+- **After recording** — back-link older entries via `update_personal` on their `related_records`.
+- **After recording** — if `related_expenses` populated, `add_expense_remark` on each expense:
+  ```
+  🔗 [summary] — personal entry #[id] ([date/timeline])
+  ```
+- Same person, topic, or project as prior entries → link when you're aware of them.
 
 ## Personal Entry Rules
 
