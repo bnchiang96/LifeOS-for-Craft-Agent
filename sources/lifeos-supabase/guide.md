@@ -96,9 +96,10 @@ Use both sets when the message contains both expense and personal content.
 When the user mentions a date, person, or location, always search to check if it relates to an existing entry.
 
 **🔴 Minor update (same topic, same event): amend existing — don't create new.**
-- Adding/changing a small detail → `add_personal_remark`
-- Adjusting a date/time on the same event → `add_personal_remark` + update `date_entries` on existing entry
-- Example: "dinner moved to 7:30pm" → remark + update date_entries. Don't create a new entry.
+- Adding/changing a small detail → `update_personal` if needed → `add_personal_remark` last.
+- Adjusting a date/time on the same event → `update_personal` on `date_entries` → `add_personal_remark` last.
+- Example: "dinner moved to 7:30pm" → update date_entries → remark. Don't create a new entry.
+- **Always: update first, remark always comes last.**
 
 **🔴 New update (same topic, new event/date): create new entry + link.**
 - Different date, different event, different context from existing → create a new entry
