@@ -204,7 +204,7 @@ If the message contains both life-context and expense content, use both sets of 
 
 ## Time Rules
 
-- 🔴 **MANDATORY: Before ANY processing that involves time, get the current date and time yourself.** Never rely on server-returned timestamps — the server no longer provides `current_date_time`.
+- 🔴 **MANDATORY: Before ANY processing that involves time, get the current date and time yourself.**
 - Do this even for simple operations like "record today's lunch" — get the current date first.
 - Follow the system timezone when interpreting relative time (today, yesterday, this month, just now, next Friday, 月底).
 - The database stores timestamps in UTC.
