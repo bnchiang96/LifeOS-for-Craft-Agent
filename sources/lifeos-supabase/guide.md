@@ -98,8 +98,13 @@ Use both sets when the message contains both expense and personal content.
 - Simple: 「午餐 RM5」→ auto-infer `["food"]`, add context to remarks.
 - PayLater (SPayLater, Grab PayLater, Atome) → remind to settle before month-end.
 
-### Payment Methods (normalize to these)
-`ShopeePay` `SPayLater` `Grab PayLater` `Atome` `Touch 'n Go eWallet` `Maybank Visa (3344)` `CIMB Debit` `Cash`
+### Payment Methods
+- 🔴 **You maintain the payment method list.** Not a fixed enum — persist whatever the user actually uses.
+- Be consistent across all records: same card = same name every time.
+- Examples (not a fixed list): `ShopeePay` `SPayLater` `Grab PayLater` `Atome` `Touch 'n Go eWallet` `Maybank Visa (3344)` `CIMB Debit` `CIMB Credit (5588)` `Cash`
+- When user provides a new card/method, remember the exact name including last 4 digits if given.
+- Map informal names to the persistent version: "TNG" → `Touch 'n Go eWallet`, "maybank visa" → `Maybank Visa (3344)`.
+- `is_paylater` auto-detected from name (contains paylater/later/atome/spaylater/grab paylater).
 
 ### Categories (always array, first = top-level)
 `food` `drink` `transport` `clothing` `beauty` `electronics` `household` `entertainment` `medical` `education` `travel` `gift` `fees` `rental` `loans` `discount` `other`
